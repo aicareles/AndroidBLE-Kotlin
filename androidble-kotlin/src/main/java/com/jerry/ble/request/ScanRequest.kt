@@ -17,8 +17,8 @@ class ScanRequest<T : BleDevice> private constructor() {
     private var bluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
     private var scanner: BluetoothLeScanner? = null
     private var scannerSetting: ScanSettings? = null
-//    private var scanCallback: BleScanCallback<T>? = null
     private var scannerCallback: BLEScanCallback? = null
+    private val handler: Handler = Handler()
     private var filters: MutableList<ScanFilter>? = null
     private val scanDevices = ArrayList<T>()
     private lateinit var scanCallback: ListenerBuilder
@@ -61,27 +61,26 @@ class ScanRequest<T : BleDevice> private constructor() {
         }
     }
 
-    fun startScan(listenerBuilder: (ListenerBuilder.() -> Unit)?=null, scanPeriod: Long) {
-        if (scanning) return
-        if (listenerBuilder != null){
-            scanCallback = ListenerBuilder().also(listenerBuilder)
-        }
-        scanning = true
-        Handler().postDelayed({
-            if (scanning)
-                stopScan()
-        }, scanPeriod)
+    fun startScan(listenerBuilder: ListenerBuilder.() -> Unit, scanPeriod: Long) {
+        scanCallback = ListenerBuilder().also(listenerBuilder)
         if (!bluetoothAdapter.isEnabled) {
+            scanning = false
             scanCallback.scanFailedAction?.invoke(-1)
-        } else {
-            supportsLollipop({
-                setScanSettings()
-                scanner?.startScan(filters, scannerSetting, scannerCallback)
-            }, {
-                bluetoothAdapter.startLeScan(mLeScanCallback)
-            })
-            scanCallback.startAction?.invoke()
+            return
         }
+        loge(TAG, scanning.toString())
+        if (scanning) return
+        scanning = true
+        handler.postDelayed({
+            if (scanning)stopScan()
+        }, scanPeriod)
+        supportsLollipop({
+            setScanSettings()
+            scanner?.startScan(filters, scannerSetting, scannerCallback)
+        }, {
+            bluetoothAdapter.startLeScan(mLeScanCallback)
+        })
+        scanCallback.startAction?.invoke()
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -89,6 +88,9 @@ class ScanRequest<T : BleDevice> private constructor() {
         val background =
             isBackground(BLE.instance.getContext())
         L.i(TAG, "currently in the background:>>>>>$background")
+        if (scanner == null){
+            scanner = bluetoothAdapter.bluetoothLeScanner
+        }
         if (background) {
             val uuidService = BLE.options().uuidService
             filters?.add(

@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             device.apply {
                 if (connected){
                     disconnect(this)
-                }else if (!connectting){
+                }else if (disconnected){
                     connect(this)
                 }
             }
@@ -80,7 +80,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     //此处第二个参数  不是特定的   比如你也可以设置500   但是如果设备不支持500个字节则会返回最大支持数
                     ble.setMtu(ble.getConnectedDevices()[0], 300){
                         onMtuChanged { device, mtu, status ->
-                            toast("支持MTU：$mtu")
+                            launch(Dispatchers.Main){
+                                toast("支持MTU：$mtu")
+                            }
                         }
                     }
                 },{
@@ -99,6 +101,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun scan() {
         BLE.instance.startScan({
+            onStart {
+                loge(TAG,"开始扫描")
+            }
+            onStop {
+                loge(TAG,"停止扫描")
+            }
             onLeScan { device, _, _ ->
                 for (d in listDatas) {
                     if (d.address == device.address)return@onLeScan
@@ -110,7 +118,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
             onScanFailed {
                 launch {
-                    if (it == -1)toast("请打开蓝牙")
+                    loge(TAG, "扫描失败$it")
+                    if (it == -1)ble.openBluetooth(this@MainActivity, REQUEST_ENABLE_BT)
                 }
             }
         }, 12000L)
@@ -211,7 +220,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_ENABLE_BT && resultCode == Activity.RESULT_CANCELED) {
-            finish()
+            toast("为了功能的正常使用,请开启蓝牙")
         } else if (requestCode == REQUEST_ENABLE_BT && resultCode == Activity.RESULT_OK) {
             //6、若打开，则进行扫描
             scan()

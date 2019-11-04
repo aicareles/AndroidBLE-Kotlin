@@ -112,7 +112,7 @@ class BLE<T: BleDevice> private constructor(){
     }
 
 
-    fun startScan(listenerBuilder: ScanRequest<BleDevice>.ListenerBuilder.() -> Unit, scanPeriod: Long){
+    fun startScan(listenerBuilder: ScanRequest<BleDevice>.ListenerBuilder.() -> Unit, scanPeriod: Long=options.scanPeriod){
         ScanRequest.get().startScan(listenerBuilder, scanPeriod)
     }
 
