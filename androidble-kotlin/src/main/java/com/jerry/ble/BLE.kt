@@ -19,7 +19,6 @@ class BLE<T: BleDevice> private constructor(){
     private lateinit var options: Options
 
     companion object{
-
         val instance by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) {
             BLE<BleDevice>()
         }
@@ -138,7 +137,7 @@ class BLE<T: BleDevice> private constructor(){
         ReadRequest.get().read(device, listenerBuilder)
     }
 
-    fun readRssi(device: T, listenerBuilder: ReadRequest<BleDevice>.RssiListenerBuilder.() -> Unit){
+    fun readRssi(device: T, listenerBuilder: (ReadRequest<BleDevice>.RssiListenerBuilder.() -> Unit)?=null){
         ReadRequest.get().readRssi(device, listenerBuilder)
     }
 

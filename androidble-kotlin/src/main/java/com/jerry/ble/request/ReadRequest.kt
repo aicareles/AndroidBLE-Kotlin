@@ -80,8 +80,10 @@ class ReadRequest<T: BleDevice> private constructor(): BleReadCallback<T> {
         return bleService.readCharacteristic(device.address)
     }
 
-    fun readRssi(device: T, listenerBuilder: RssiListenerBuilder.() -> Unit): Boolean{
-        readRssiCallback = RssiListenerBuilder().also(listenerBuilder)
+    fun readRssi(device: T, listenerBuilder: (RssiListenerBuilder.() -> Unit)?=null): Boolean{
+        if (listenerBuilder != null){
+            readRssiCallback = RssiListenerBuilder().also(listenerBuilder)
+        }
         val bleService = BLE.instance.getBleService()
         return bleService.readRssi(device.address)
     }

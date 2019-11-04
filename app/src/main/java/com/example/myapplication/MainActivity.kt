@@ -53,13 +53,29 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun initLinsenter() {
         readRssi.setOnClickListener{
-
+            handleException {
+                ble.readRssi(ble.getConnectedDevices()[0]){
+                    onReadRssiSuccess { device, rssi ->
+                        loge(TAG, rssi.toString())
+                    }
+                }
+            }
         }
         sendData.setOnClickListener {
-
+            handleException {
+                val data = byteArrayOf(0x00, 0x01, 0x02)
+                ble.write(ble.getConnectedDevices()[0], data){
+                    onWriteSuccess { device, characteristic ->
+                        loge(TAG, "写入数据成功")
+                    }
+                    onWriteFailed { device, states ->
+                        loge(TAG, "写入数据失败")
+                    }
+                }
+            }
         }
         requestMtu.setOnClickListener {
-            if (ble.getConnectedDevices().isNotEmpty()){
+            handleException {
                 supportsLollipop({
                     //此处第二个参数  不是特定的   比如你也可以设置500   但是如果设备不支持500个字节则会返回最大支持数
                     ble.setMtu(ble.getConnectedDevices()[0], 300){
@@ -92,6 +108,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     adapter.notifyDataSetChanged()
                 }
             }
+            onScanFailed {
+                launch {
+                    if (it == -1)toast("请打开蓝牙")
+                }
+            }
         }, 12000L)
     }
     
@@ -109,6 +130,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 loge(TAG, "设备连接超时")
             }
             onReady {
+                //开启(使能)通知,不然收不到硬件发送过来的数据
                 enableNotify(it)
             }
         }

@@ -9,14 +9,8 @@ import android.os.Binder
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
-import com.jerry.ble.callback.BleConnectCallback
-import com.jerry.ble.callback.BleMtuCallback
-import com.jerry.ble.callback.BleNotifyCallback
-import com.jerry.ble.callback.BleReadCallback
-import com.jerry.ble.request.ConnectRequest
-import com.jerry.ble.request.MtuRequest
-import com.jerry.ble.request.NotifyRequest
-import com.jerry.ble.request.ReadRequest
+import com.jerry.ble.callback.*
+import com.jerry.ble.request.*
 import java.util.*
 
 class BleService : Service() {
@@ -42,6 +36,7 @@ class BleService : Service() {
     private val connectedAddressList = mutableListOf<String>()
 
     private var bleConnectCallback: BleConnectCallback<BleDevice>? = null
+    private var bleWriteCallback: BleWriteCallback<BleDevice>? = null
     private var bleReadCallback: BleReadCallback<BleDevice>? = null
     private var bleNotifyCallback: BleNotifyCallback<BleDevice>? = null
     private var bleMtuCallback: BleMtuCallback<BleDevice>? = null
@@ -129,7 +124,9 @@ class BleService : Service() {
             synchronized(locker) {
                 L.i(TAG, gatt.device.address + " -- onCharacteristicWrite: " + status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-
+                    bleWriteCallback?.onWriteSuccess(gatt.device, characteristic)
+                }else {
+                    bleWriteCallback?.onWriteFailed(gatt.device, status)
                 }
             }
         }
@@ -226,6 +223,7 @@ class BleService : Service() {
 
     fun initialize(options: BLE.Options) {
         this.bleConnectCallback = ConnectRequest.get()
+        this.bleWriteCallback = WriteRequest.get()
         this.bleReadCallback = ReadRequest.get()
         this.bleNotifyCallback = NotifyRequest.get()
         this.bleMtuCallback = MtuRequest.get()
@@ -572,19 +570,5 @@ class BleService : Service() {
      */
     fun getRssiVal(address: String): Boolean? {
         return if (bluetoothGattMap[address] == null) false else bluetoothGattMap[address]?.readRemoteRssi()
-
     }
-
-    //The basic method of writing data
-    fun writeCharacteristic(
-        gatt: BluetoothGatt?,
-        characteristic: BluetoothGattCharacteristic?
-    ): Boolean {
-        synchronized(locker) {
-            return !(gatt == null || characteristic == null) && gatt.writeCharacteristic(
-                characteristic
-            )
-        }
-    }
-
 }

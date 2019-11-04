@@ -21,6 +21,9 @@ class MtuRequest<T : BleDevice> private constructor() : BleMtuCallback<T> {
         })
 
     fun setMtu(device: T, mtu: Int, listenerBuilder: (ListenerBuilder.() -> Unit)?=null) {
+        if (listenerBuilder != null){
+            mtuCallback = ListenerBuilder().also (listenerBuilder)
+        }
         val bleService = BLE.instance.getBleService()
         bleService.setMtu(device.address, mtu)
     }
