@@ -6,12 +6,13 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import cn.com.superLei.aoparms.annotation.Permission
 import cn.com.superLei.aoparms.annotation.PermissionDenied
 import cn.com.superLei.aoparms.annotation.PermissionNoAskDenied
 import cn.com.superLei.aoparms.common.permission.AopPermissionUtils
-import com.jerry.androidble.*
+import com.jerry.ble.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 import java.util.*
@@ -37,6 +38,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private fun initView(){
         recyclerview.layoutManager = LinearLayoutManager(this)
         recyclerview.adapter = adapter
+        recyclerview.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
         adapter.setOnItemClickListener {
             val device = adapter.items[it]
             device.apply {
@@ -105,6 +107,23 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
             onConnectTimeOut {
                 loge(TAG, "设备连接超时")
+            }
+            onReady {
+                enableNotify(it)
+            }
+        }
+    }
+
+    private fun enableNotify(device: BleDevice){
+        ble.enableNotify(device){
+            onChanged { device, characteristic ->
+                loge(TAG, "收到设备数据:${characteristic.value.bytesToHexString()}")
+            }
+            onNotifySuccess {
+                loge(TAG, "设置通知成功>>>>")
+                launch(Dispatchers.Main) {
+                    adapter.notifyDataSetChanged()
+                }
             }
         }
     }

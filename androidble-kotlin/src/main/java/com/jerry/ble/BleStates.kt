@@ -1,10 +1,11 @@
-package com.jerry.androidble
+package com.jerry.ble
 
 enum class BleStates {
 
     CONNECTED,
     CONNECTING,
     DISCONNECT,
+
     ConnectionChanged,
     ServicesDiscovered,
     Read,

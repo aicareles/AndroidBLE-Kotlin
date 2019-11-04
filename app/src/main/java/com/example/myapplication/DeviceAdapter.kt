@@ -4,7 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.jerry.androidble.BleDevice
+import com.jerry.ble.BleDevice
 import kotlinx.android.synthetic.main.item_device.view.*
 
 /**
@@ -14,9 +14,14 @@ import kotlinx.android.synthetic.main.item_device.view.*
 class DeviceAdapter(var items: List<BleDevice>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
 
     private var mListener: ((Int) -> Unit?)? = null
+    private var mNotifyListener: ((Int) -> Unit?)? = null
 
     fun setOnItemClickListener(mListener: (Int) -> Unit) {
         this.mListener = mListener
+    }
+
+    fun setOnItemNotifyClickListener(mListener: (Int) -> Unit) {
+        this.mNotifyListener = mListener
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -39,6 +44,9 @@ class DeviceAdapter(var items: List<BleDevice>) : RecyclerView.Adapter<DeviceAda
         }
         holder.itemView.setOnClickListener {
             mListener?.invoke(position)
+        }
+        holder.itemView.btn_notify.setOnClickListener {
+            mNotifyListener?.invoke(position)
         }
     }
 

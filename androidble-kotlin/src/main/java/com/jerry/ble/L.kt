@@ -1,4 +1,4 @@
-package com.jerry.androidble
+package com.jerry.ble
 
 import android.text.TextUtils
 import android.util.Log

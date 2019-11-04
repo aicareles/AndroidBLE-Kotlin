@@ -1,4 +1,4 @@
-package com.jerry.androidble.callback
+package com.jerry.ble.callback
 
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic

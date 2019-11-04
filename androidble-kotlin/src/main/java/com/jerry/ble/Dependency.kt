@@ -1,4 +1,4 @@
-package com.jerry.androidble
+package com.jerry.ble
 
 interface Dependency<T> {
     var mocked: T?

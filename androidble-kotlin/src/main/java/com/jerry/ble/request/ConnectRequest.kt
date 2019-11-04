@@ -1,8 +1,8 @@
-package com.jerry.androidble.request
+package com.jerry.ble.request
 
 import android.bluetooth.BluetoothDevice
-import com.jerry.androidble.*
-import com.jerry.androidble.callback.BleConnectCallback
+import com.jerry.ble.*
+import com.jerry.ble.callback.BleConnectCallback
 
 class ConnectRequest<T: BleDevice> private constructor():
     BleConnectCallback<T> {
@@ -60,10 +60,22 @@ class ConnectRequest<T: BleDevice> private constructor():
         onConnectionChanged(device, BleStates.DISCONNECT)
     }
 
+    override fun onServicesDiscovered(device: BluetoothDevice) {
+        val bleDevice: T = getBleDevice(device.address) ?: return
+        connectCallback.servicesDiscoveredAction?.invoke(bleDevice)
+    }
+
+    override fun onReady(device: BluetoothDevice) {
+        val bleDevice: T = getBleDevice(device.address) ?: return
+        connectCallback.readyAction?.invoke(bleDevice)
+    }
+
     inner class ListenerBuilder {
         internal var connectionChangedAction: ((device: T) -> Unit)? = null
         internal var connectExceptionAction: ((device: T, errorCode: BleStates) -> Unit)? = null
         internal var connectTimeOutAction: ((device: T) -> Unit)? = null
+        internal var servicesDiscoveredAction: ((device: T) -> Unit)? = null
+        internal var readyAction: ((device: T) -> Unit)? = null
 
         fun onConnectionChanged(action: (device: T) -> Unit) {
             connectionChangedAction = action
@@ -75,6 +87,14 @@ class ConnectRequest<T: BleDevice> private constructor():
 
         fun onConnectTimeOut(action: (device: T) -> Unit) {
             connectTimeOutAction = action
+        }
+
+        fun onReady(action: (device: T) -> Unit) {
+            readyAction = action
+        }
+
+        fun onServicesDiscovered(action: (device: T) -> Unit) {
+            servicesDiscoveredAction = action
         }
 
     }

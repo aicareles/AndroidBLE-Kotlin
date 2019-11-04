@@ -1,11 +1,11 @@
-package com.jerry.androidble.request
+package com.jerry.ble.request
 
 import android.bluetooth.BluetoothDevice
-import com.jerry.androidble.BLE
-import com.jerry.androidble.BleDevice
-import com.jerry.androidble.Dependency
-import com.jerry.androidble.Provider
-import com.jerry.androidble.callback.BleMtuCallback
+import com.jerry.ble.BLE
+import com.jerry.ble.BleDevice
+import com.jerry.ble.Dependency
+import com.jerry.ble.Provider
+import com.jerry.ble.callback.BleMtuCallback
 
 class MtuRequest<T : BleDevice> private constructor() : BleMtuCallback<T> {
 
@@ -22,7 +22,7 @@ class MtuRequest<T : BleDevice> private constructor() : BleMtuCallback<T> {
 
     fun setMtu(device: T, mtu: Int, listenerBuilder: (ListenerBuilder.() -> Unit)?=null) {
         val bleService = BLE.instance.getBleService()
-        bleService.setMTU(device.address, mtu)
+        bleService.setMtu(device.address, mtu)
     }
 
     override fun onMtuChanged(device: BluetoothDevice, mtu: Int, status: Int) {

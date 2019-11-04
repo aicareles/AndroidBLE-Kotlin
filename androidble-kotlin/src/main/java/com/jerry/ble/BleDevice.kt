@@ -1,4 +1,4 @@
-package com.jerry.androidble
+package com.jerry.ble
 
 import android.bluetooth.BluetoothDevice
 import android.os.Parcelable
@@ -7,7 +7,8 @@ import kotlinx.android.parcel.Parcelize
 @Parcelize
 open class BleDevice private constructor(
     var connectState: BleStates = BleStates.DISCONNECT, var address: String,
-    var name: String?, var alias: String = "", var autoConnect: Boolean = false, var autoConnectting: Boolean = false
+    var name: String?, var alias: String = "", var autoConnect: Boolean = false,
+    var autoConnectting: Boolean = false
 ) : Parcelable {
 
     val connected

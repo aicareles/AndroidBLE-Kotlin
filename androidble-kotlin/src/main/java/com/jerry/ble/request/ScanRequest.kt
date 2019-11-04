@@ -1,4 +1,4 @@
-package com.jerry.androidble.request
+package com.jerry.ble.request
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.ParcelUuid
 import androidx.annotation.RequiresApi
-import com.jerry.androidble.*
+import com.jerry.ble.*
 import java.util.ArrayList
 
 class ScanRequest<T : BleDevice> private constructor() {

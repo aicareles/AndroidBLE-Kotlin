@@ -1,4 +1,4 @@
-package com.jerry.androidble
+package com.jerry.ble
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

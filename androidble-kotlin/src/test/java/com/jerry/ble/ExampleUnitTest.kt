@@ -1,4 +1,4 @@
-package com.jerry.androidble
+package com.jerry.ble
 
 import org.junit.Test
 

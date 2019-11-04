@@ -1,12 +1,12 @@
-package com.jerry.androidble.request
+package com.jerry.ble.request
 
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
-import com.jerry.androidble.BLE
-import com.jerry.androidble.BleDevice
-import com.jerry.androidble.Dependency
-import com.jerry.androidble.Provider
-import com.jerry.androidble.callback.BleReadCallback
+import com.jerry.ble.BLE
+import com.jerry.ble.BleDevice
+import com.jerry.ble.Dependency
+import com.jerry.ble.Provider
+import com.jerry.ble.callback.BleReadCallback
 
 class ReadRequest<T: BleDevice> private constructor(): BleReadCallback<T> {
 

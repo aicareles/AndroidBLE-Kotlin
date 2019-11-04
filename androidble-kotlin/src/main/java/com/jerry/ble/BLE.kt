@@ -1,4 +1,4 @@
-package com.jerry.androidble
+package com.jerry.ble
 
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
@@ -8,8 +8,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
-import com.jerry.androidble.request.*
-import com.jerry.androidble.request.MtuRequest
+import com.jerry.ble.request.*
+import com.jerry.ble.request.MtuRequest
 import java.util.*
 
 class BLE<T: BleDevice> private constructor(){
@@ -130,6 +130,10 @@ class BLE<T: BleDevice> private constructor(){
         ConnectRequest.get().disconnect(device, listenerBuilder)
     }
 
+    fun enableNotify(device: T, listenerBuilder: (NotifyRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
+        NotifyRequest.get().enableNotify(device, listenerBuilder)
+    }
+
     fun read(device: T, listenerBuilder: (ReadRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
         ReadRequest.get().read(device, listenerBuilder)
     }
@@ -138,8 +142,8 @@ class BLE<T: BleDevice> private constructor(){
         ReadRequest.get().readRssi(device, listenerBuilder)
     }
 
-    fun write(device: T, listenerBuilder: (WriteRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
-        WriteRequest.get().write(device, listenerBuilder)
+    fun write(device: T, value: ByteArray, listenerBuilder: (WriteRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
+        WriteRequest.get().write(device, value, listenerBuilder)
     }
 
     fun setMtu(device: T, mtu: Int, listenerBuilder: (MtuRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null) {
@@ -149,9 +153,9 @@ class BLE<T: BleDevice> private constructor(){
     /**
      * 蓝牙相关参数配置类
      */
-    class Options constructor() {
+    class Options {
 
-        companion object{
+        companion object {
             val options by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) {
                 Options()
             }
