@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         adapter.setOnItemNotifyClickListener {
             val device = adapter.items[it]
             val enable = !device.enableNotification
+            //手动设置使能(不推荐)
             ble.enableNotifyByUUID(device.address, UUID_SERVICE, UUID_NOTIFY_CHA, enable){
                 onChanged { device, characteristic ->
                     loge(TAG, "收到数据${characteristic.value.bytesToHexString()}")
@@ -98,7 +99,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
         read.setOnClickListener {
             handleException {
-                ble.readByUUID(ble.getConnectedDevices()[0].address, UUID_SERVICE, UUID_READ_CHA){
+                ble.read(ble.getConnectedDevices()[0]){
                     onReadSuccess { device, characteristic ->
                         loge(TAG, "读取数据成功:${characteristic.value.bytesToHexString()}")
                     }
@@ -106,6 +107,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         loge(TAG, "读取数据失败")
                     }
                 }
+                /*ble.readByUUID(ble.getConnectedDevices()[0].address, UUID_SERVICE, UUID_READ_CHA){
+                    onReadSuccess { device, characteristic ->
+                        loge(TAG, "读取数据成功:${characteristic.value.bytesToHexString()}")
+                    }
+                    onReadFailed { device, states ->
+                        loge(TAG, "读取数据失败")
+                    }
+                }*/
             }
         }
         sendData.setOnClickListener {
