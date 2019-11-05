@@ -62,14 +62,16 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="开启广播"/>
+            android:text="开启广播"
+            android:visibility="gone"/>
 
         <Button
             android:id="@+id/stopAdvertise"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="停止广播"/>
+            android:text="停止广播"
+            android:visibility="gone"/>
 
         <Button
             android:id="@+id/scan"

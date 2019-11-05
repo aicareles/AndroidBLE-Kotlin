@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private val REQUEST_ENABLE_BT = 1
     private lateinit var ble: BLE<BleDevice>
     private var listDatas = mutableListOf<BleDevice>()
-    private val adapter = DeviceAdapter(listDatas)
+    private lateinit var adapter: DeviceAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,8 +40,23 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun initView(){
         recyclerview.layoutManager = LinearLayoutManager(this)
+        adapter = DeviceAdapter(applicationContext, listDatas)
         recyclerview.adapter = adapter
         recyclerview.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
+    }
+
+    private fun initBluetoothStates() {
+        BLE.instance.setBluetoothCallback(applicationContext){
+            onBluetoothOn {
+                loge(TAG, "蓝牙已打开")
+            }
+            onBluetoothOff {
+                loge(TAG, "蓝牙已关闭")
+            }
+        }
+    }
+
+    private fun initLinsenter() {
         adapter.setOnItemClickListener {
             val device = adapter.items[it]
             device.apply {
@@ -74,20 +89,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 }
             }
         }
-    }
-
-    private fun initBluetoothStates() {
-        BLE.instance.setBluetoothCallback(applicationContext){
-            onBluetoothOn {
-                loge(TAG, "蓝牙已打开")
-            }
-            onBluetoothOff {
-                loge(TAG, "蓝牙已关闭")
-            }
-        }
-    }
-
-    private fun initLinsenter() {
         readRssi.setOnClickListener{
             handleException {
                 ble.readRssi(ble.getConnectedDevices()[0]){
@@ -300,6 +301,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     override fun onDestroy() {
         super.onDestroy()
+        ble.destory()
         cancel()
     }
 }

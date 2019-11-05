@@ -1,8 +1,11 @@
 package com.example.myapplication
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ComplexColorCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.jerry.ble.BleDevice
 import kotlinx.android.synthetic.main.item_device.view.*
@@ -11,7 +14,7 @@ import kotlinx.android.synthetic.main.item_device.view.*
  * description $desc$
  * created by jerry on 2019/5/4.
  */
-class DeviceAdapter(var items: List<BleDevice>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+class DeviceAdapter(val context: Context, var items: List<BleDevice>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
 
     private var mListener: ((Int) -> Unit?)? = null
     private var mNotifyListener: ((Int) -> Unit?)? = null
@@ -38,9 +41,17 @@ class DeviceAdapter(var items: List<BleDevice>) : RecyclerView.Adapter<DeviceAda
             holder.itemView.tv_address.text = address
             holder.itemView.btn_notify.text = if (enableNotification) "关闭通知" else "打开通知"
             when {
-                device.connected -> holder.itemView.tv_state.text = "已连接"
-                device.connectting -> holder.itemView.tv_state.text = "正在连接中..."
-                else -> holder.itemView.tv_state.text = "未连接"
+                device.connected -> {
+                    holder.itemView.tv_state.text = "已连接"
+                    holder.itemView.tv_state.setTextColor(ContextCompat.getColor(context, R.color.colorAccent))
+                }
+                device.connectting -> {
+                    holder.itemView.tv_state.text = "正在连接中..."
+                }
+                else -> {
+                    holder.itemView.tv_state.text = "未连接"
+                    holder.itemView.tv_state.setTextColor(ContextCompat.getColor(context, R.color.text_color))
+                }
             }
         }
         holder.itemView.setOnClickListener {
