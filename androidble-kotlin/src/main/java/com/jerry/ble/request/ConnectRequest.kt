@@ -32,6 +32,7 @@ class ConnectRequest<T: BleDevice> private constructor():
             BleStates.DISCONNECT ->{
                 connectedDevices.remove(bleDevice)
                 devices.remove(bleDevice)
+                bleDevice.enableNotification = false
                 L.e(TAG, "DISCONNECT>>>> " + bleDevice.name)
             }
             else -> {}

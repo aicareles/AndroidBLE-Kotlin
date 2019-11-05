@@ -9,6 +9,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import androidx.core.os.HandlerCompat
 import com.jerry.ble.callback.*
 import com.jerry.ble.request.*
 import java.util.*
@@ -35,11 +36,11 @@ class BleService : Service() {
      */
     private val connectedAddressList = mutableListOf<String>()
 
-    private var bleConnectCallback: BleConnectCallback<BleDevice>? = null
-    private var bleWriteCallback: BleWriteCallback<BleDevice>? = null
-    private var bleReadCallback: BleReadCallback<BleDevice>? = null
-    private var bleNotifyCallback: BleNotifyCallback<BleDevice>? = null
-    private var bleMtuCallback: BleMtuCallback<BleDevice>? = null
+    private lateinit var bleConnectCallback: BleConnectCallback<BleDevice>
+    private lateinit var bleWriteCallback: BleWriteCallback<BleDevice>
+    private lateinit var bleReadCallback: BleReadCallback<BleDevice>
+    private lateinit var bleNotifyCallback: BleNotifyCallback<BleDevice>
+    private lateinit var bleMtuCallback: BleMtuCallback<BleDevice>
 
     /**
      * 在各种状态回调中发现连接更改或服务
@@ -51,30 +52,31 @@ class BleService : Service() {
         ) {
             val device = gatt.device
             //remove timeout callback
-            val timeoutRunnable = timeoutTasks[device.address]
+            /*val timeoutRunnable = timeoutTasks[device.address]
             if (timeoutRunnable != null) {
                 timeoutTasks.remove(device.address)
                 handler.removeCallbacks(timeoutRunnable)
-            }
+            }*/
+            handler.removeCallbacksAndMessages(device.address)
             //There is a problem here Every time a new object is generated that causes the same device to be disconnected and the connection produces two objects
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     connectedAddressList.add(device.address)
-                    bleConnectCallback?.onConnectionChanged(device, BleStates.CONNECTED)
+                    bleConnectCallback.onConnectionChanged(device, BleStates.CONNECTED)
                     L.i(TAG, "handleMessage:>>>>>>>>CONNECTED.")
                     // Attempts to discover services after successful connection.
                     logi(TAG, "Attempting to start service discovery")
                     bluetoothGattMap[device.address]?.discoverServices()
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     L.i(TAG, "Disconnected from GATT server.")
-                    bleConnectCallback?.onConnectionChanged(device, BleStates.DISCONNECT)
+                    bleConnectCallback.onConnectionChanged(device, BleStates.DISCONNECT)
                     close(device.address)
                 }
             } else {
                 //Occurrence 133 or 257 19 Equal value is not 0: Connection establishment failed due to protocol stack
                 L.e(TAG, "onConnectionStateChange>>>>>>>>: Connection status is abnormal:$status")
                 close(device.address)
-                bleConnectCallback?.apply {
+                bleConnectCallback.apply {
                     onConnectException(device)
                     onConnectionChanged(device, BleStates.DISCONNECT)
                 }
@@ -86,13 +88,13 @@ class BleService : Service() {
         override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
             if (gatt != null && gatt.device != null) {
                 L.e(TAG, "onMtuChanged mtu=$mtu,status=$status")
-                bleMtuCallback?.onMtuChanged(gatt.device, mtu, status)
+                bleMtuCallback.onMtuChanged(gatt.device, mtu, status)
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                bleConnectCallback?.onServicesDiscovered(gatt.device)
+                bleConnectCallback.onServicesDiscovered(gatt.device)
                 //Empty the notification attribute list
                 notifyCharacteristics.clear()
                 notifyIndex = 0
@@ -110,9 +112,9 @@ class BleService : Service() {
         ) {
             L.d(TAG, "onCharacteristicRead:$status")
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                bleReadCallback?.onReadSuccess(gatt.device, characteristic)
+                bleReadCallback.onReadSuccess(gatt.device, characteristic)
             }else {
-                bleReadCallback?.onReadFailed(gatt.device, status)
+                bleReadCallback.onReadFailed(gatt.device, status)
             }
         }
 
@@ -124,9 +126,9 @@ class BleService : Service() {
             synchronized(locker) {
                 L.i(TAG, gatt.device.address + " -- onCharacteristicWrite: " + status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    bleWriteCallback?.onWriteSuccess(gatt.device, characteristic)
+                    bleWriteCallback.onWriteSuccess(gatt.device, characteristic)
                 }else {
-                    bleWriteCallback?.onWriteFailed(gatt.device, status)
+                    bleWriteCallback.onWriteFailed(gatt.device, status)
                 }
             }
         }
@@ -144,8 +146,8 @@ class BleService : Service() {
             synchronized(locker) {
                 val device = gatt.device ?: return
                 L.i(TAG, gatt.device.address + " -- onCharacteristicChanged: "
-                            + if (characteristic.value != null) Arrays.toString(characteristic.value) else "")
-                bleNotifyCallback?.onChanged(device, characteristic)
+                            + if (characteristic.value != null) characteristic.value.bytesToHexString() else "")
+                bleNotifyCallback.onChanged(device, characteristic)
             }
         }
 
@@ -165,7 +167,11 @@ class BleService : Service() {
                         )
                     } else {
                         L.i(TAG, "====setCharacteristicNotification is true,ready to sendData===")
-                        bleNotifyCallback?.onNotifySuccess(gatt.device)
+                        when(descriptor.value){
+                            BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE->bleNotifyCallback.onNotifySuccess(gatt.device)
+                            BluetoothGattDescriptor.ENABLE_INDICATION_VALUE->bleNotifyCallback.onNotifySuccess(gatt.device)
+                            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE->bleNotifyCallback.onNotifyCanceled(gatt.device)
+                        }
                     }
                 }
             }
@@ -178,16 +184,15 @@ class BleService : Service() {
         ) {
             super.onDescriptorRead(gatt, descriptor, status)
             val uuid = descriptor.characteristic.uuid
-            L.i(TAG, "onDescriptorRead")
-            L.i(TAG, "descriptor_uuid:$uuid")
+            L.i(TAG, "onDescriptorRead >>>>descriptor_uuid:$uuid")
         }
 
         override fun onReadRemoteRssi(gatt: BluetoothGatt, rssi: Int, status: Int) {
-            println("rssi = $rssi")
+            L.i(TAG, "rssi = $rssi")
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                bleReadCallback?.onReadRssiSuccess(gatt.device, rssi)
+                bleReadCallback.onReadRssiSuccess(gatt.device, rssi)
             }else {
-                bleReadCallback?.onReadRssiFailed(gatt.device, status)
+                bleReadCallback.onReadRssiFailed(gatt.device, status)
             }
         }
     }
@@ -252,7 +257,7 @@ class BleService : Service() {
 
     private fun checkTimeOutTask(device: BluetoothDevice): Runnable {
         return Runnable {
-            bleConnectCallback?.onConnectTimeOut(device)
+            bleConnectCallback.onConnectTimeOut(device)
             close(device.address)
         }
     }
@@ -285,10 +290,14 @@ class BleService : Service() {
             return false
         }
         //10s after the timeout prompt
-        val timeOutRunnable = checkTimeOutTask(device)
+        /*val timeOutRunnable = checkTimeOutTask(device)
         timeoutTasks[device.address] = timeOutRunnable
-        handler.postDelayed(timeOutRunnable, options.connectTimeout)
-        bleConnectCallback?.onConnectionChanged(device, BleStates.CONNECTING)
+        handler.postDelayed(timeOutRunnable, options.connectTimeout)*/
+        HandlerCompat.postDelayed(handler, {
+            bleConnectCallback.onConnectTimeOut(device)
+            close(device.address)
+        }, device.address, options.connectTimeout)
+        bleConnectCallback.onConnectionChanged(device, BleStates.CONNECTING)
         // We want to directly connect to the device, so we are setting the autoConnect parameter to false
         val bluetoothGatt = device.connectGatt(this, false, mGattCallback)
         if (bluetoothGatt != null) {
@@ -383,7 +392,8 @@ class BleService : Service() {
     fun wirteCharacteristic(address: String, value: ByteArray): Boolean {
         val bluetoothGatt = bluetoothGattMap[address]
         if (bluetoothAdapter == null || bluetoothGatt == null) {
-            L.w(TAG, "BluetoothAdapter not initialized")
+            L.w(TAG, "Device not connected")
+            bleWriteCallback.onWriteFailed(bluetoothGatt?.device, -1)
             return false
         }
         val gattCharacteristic = writeCharacteristicMap[address]
@@ -410,7 +420,8 @@ class BleService : Service() {
     fun readCharacteristic(address: String): Boolean {
         val bluetoothGatt = bluetoothGattMap[address]
         if (bluetoothAdapter == null || bluetoothGatt == null) {
-            L.w(TAG, "BluetoothAdapter not initialized")
+            L.w(TAG, "Device not connected")
+            bleReadCallback.onReadFailed(bluetoothGatt?.device, -1)
             return false
         }
         val gattCharacteristic = readCharacteristicMap[address]
@@ -424,7 +435,56 @@ class BleService : Service() {
             e.printStackTrace()
         }
         return false
+    }
 
+    fun wirteCharacteristicByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, value: ByteArray): Boolean{
+        val bluetoothGatt = bluetoothGattMap[address]
+        if (bluetoothAdapter == null || bluetoothGatt == null) {
+            L.w(TAG, "Device not connected")
+            bleWriteCallback.onWriteFailed(bluetoothGatt?.device, -1)
+            return false
+        }
+        val characteristic = getCharacteristic(bluetoothGatt, serviceUUID, characteristicUUID)
+        if (characteristic == null){
+            bleWriteCallback.onWriteFailed(bluetoothGatt.device, -1)
+            return false
+        }
+        characteristic.value = value
+        val result = bluetoothGatt.writeCharacteristic(characteristic)
+        L.d(TAG, address + " -- write data:" + Arrays.toString(value))
+        L.d(TAG, "$address -- write result:$result")
+        return result
+    }
+
+    fun readCharacteristicByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID): Boolean{
+        val bluetoothGatt = bluetoothGattMap[address]
+        if (bluetoothAdapter == null || bluetoothGatt == null) {
+            L.w(TAG, "Device not connected")
+            bleReadCallback.onReadFailed(bluetoothGatt?.device, -1)
+            return false
+        }
+        val characteristic = getCharacteristic(bluetoothGatt, serviceUUID, characteristicUUID)
+        if (characteristic == null){
+            bleReadCallback.onReadFailed(bluetoothGatt.device, -1)
+            return false
+        }
+        val result = bluetoothGatt.readCharacteristic(characteristic)
+        L.d(TAG, "$address -- read result:$result")
+        return result
+    }
+
+    private fun getCharacteristic(gatt: BluetoothGatt, serviceUUID: UUID, characteristicUUID: UUID): BluetoothGattCharacteristic?{
+        val gattService = gatt.getService(serviceUUID)
+        if (gattService == null){
+            L.e(TAG, "serviceUUID is null")
+            return null
+        }
+        val characteristic = gattService.getCharacteristic(characteristicUUID)
+        if (characteristic == null){
+            L.e(TAG, "characteristicUUID is null")
+            return null
+        }
+        return characteristic
     }
 
     /**
@@ -435,7 +495,7 @@ class BleService : Service() {
     fun readRssi(address: String): Boolean {
         val bluetoothGatt = bluetoothGattMap[address]
         if (bluetoothAdapter == null || bluetoothGatt == null) {
-            L.w(TAG, "BluetoothAdapter not initialized")
+            L.w(TAG, "Device not connected")
             return false
         }
         val result = bluetoothGatt.readRemoteRssi()
@@ -456,7 +516,21 @@ class BleService : Service() {
             return
         }
         val characteristic = notifyCharacteristics[notifyIndex++]
-        bluetoothGatt.setCharacteristicNotification(characteristic, enabled)
+        setCharacteristicNotificationInternal(bluetoothGatt, characteristic, enabled)
+    }
+
+    fun setCharacteristicNotificationByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, enabled: Boolean) {
+        val bluetoothGatt = bluetoothGattMap[address]
+        if (bluetoothAdapter == null || bluetoothGatt == null) {
+            L.d(TAG, "Device not connected")
+            return
+        }
+        val characteristic = getCharacteristic(bluetoothGatt, serviceUUID, characteristicUUID) ?: return
+        setCharacteristicNotificationInternal(bluetoothGatt, characteristic, enabled)
+    }
+
+    private fun setCharacteristicNotificationInternal(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, enabled: Boolean){
+        gatt.setCharacteristicNotification(characteristic, enabled)
         //If the number of descriptors in the eigenvalue of the notification is greater than zero
         if (characteristic.descriptors.size > 0) {
             //Filter descriptors based on the uuid of the descriptor
@@ -464,11 +538,11 @@ class BleService : Service() {
             for (descriptor in descriptors) {
                 //Write the description value
                 if (characteristic.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
-                    descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    descriptor.value = if (enabled) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
                 } else if (characteristic.properties and BluetoothGattCharacteristic.PROPERTY_INDICATE != 0) {
-                    descriptor.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                    descriptor.value = if (enabled) BluetoothGattDescriptor.ENABLE_INDICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
                 }
-                bluetoothGattMap[address]?.writeDescriptor(descriptor)
+                gatt.writeDescriptor(descriptor)
             }
         }
     }
@@ -512,7 +586,7 @@ class BleService : Service() {
                         true
                     )
                 }*/
-                bleConnectCallback?.onReady(device)
+                bleConnectCallback.onReady(device)
             }
         }
     }

@@ -7,6 +7,7 @@ import com.jerry.ble.BleDevice
 import com.jerry.ble.Dependency
 import com.jerry.ble.Provider
 import com.jerry.ble.callback.BleReadCallback
+import java.util.*
 
 class ReadRequest<T: BleDevice> private constructor(): BleReadCallback<T> {
 
@@ -30,8 +31,8 @@ class ReadRequest<T: BleDevice> private constructor(): BleReadCallback<T> {
         readCallback.readSuccessAction?.invoke(bleDevice, characteristic)
     }
 
-    override fun onReadFailed(device: BluetoothDevice, states: Int) {
-        val bleDevice = ConnectRequest.get().getBleDevice(device.address) as T
+    override fun onReadFailed(device: BluetoothDevice?, states: Int) {
+        val bleDevice = ConnectRequest.get().getBleDevice(device?.address) as T
         readCallback.readFailedAction?.invoke(bleDevice, states)
     }
 
@@ -78,6 +79,14 @@ class ReadRequest<T: BleDevice> private constructor(): BleReadCallback<T> {
         }
         val bleService = BLE.instance.getBleService()
         return bleService.readCharacteristic(device.address)
+    }
+
+    fun readByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, listenerBuilder: (ListenerBuilder.() -> Unit)?=null): Boolean{
+        if (listenerBuilder != null){
+            readCallback = ListenerBuilder().also (listenerBuilder)
+        }
+        val bleService = BLE.instance.getBleService()
+        return bleService.readCharacteristicByUUID(address, serviceUUID, characteristicUUID)
     }
 
     fun readRssi(device: T, listenerBuilder: (RssiListenerBuilder.() -> Unit)?=null): Boolean{

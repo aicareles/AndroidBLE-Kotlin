@@ -9,4 +9,6 @@ interface BleNotifyCallback<T> {
 
     fun onNotifySuccess(device: BluetoothDevice)
 
+    fun onNotifyCanceled(device: BluetoothDevice)
+
 }

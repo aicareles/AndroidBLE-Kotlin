@@ -6,6 +6,7 @@ import android.bluetooth.le.*
 import android.os.Build
 import android.os.Handler
 import android.os.ParcelUuid
+import android.text.TextUtils
 import androidx.annotation.RequiresApi
 import com.jerry.ble.*
 import java.util.ArrayList
@@ -22,6 +23,7 @@ class ScanRequest<T : BleDevice> private constructor() {
     private var filters: MutableList<ScanFilter>? = null
     private val scanDevices = ArrayList<T>()
     private lateinit var scanCallback: ListenerBuilder
+    private var options: BLE.Options = BLE.options()
 
     companion object : Dependency<ScanRequest<BleDevice>> by Provider({
             ScanRequest<BleDevice>()
@@ -68,7 +70,6 @@ class ScanRequest<T : BleDevice> private constructor() {
             scanCallback.scanFailedAction?.invoke(-1)
             return
         }
-        loge(TAG, scanning.toString())
         if (scanning) return
         scanning = true
         handler.postDelayed({
@@ -112,9 +113,7 @@ class ScanRequest<T : BleDevice> private constructor() {
     fun stopScan() {
         if (!scanning) return
         scanning = false
-        if (!bluetoothAdapter.isEnabled) {
-            scanCallback.scanFailedAction?.invoke(-1)
-        } else {
+        if (bluetoothAdapter.isEnabled) {
             supportsLollipop({
                 scanner?.stopScan(scannerCallback)
             }, {
@@ -164,20 +163,42 @@ class ScanRequest<T : BleDevice> private constructor() {
     ) {
         if (device == null) return
         var bleDevice = getDevice(device.address)
+        L.i(TAG,"扫描到的设备${device.name}")
+        if (!filterByName(device.name))return
         if (bleDevice == null) {
             bleDevice = BleDevice(device) as T
             scanCallback.scanAction?.invoke(bleDevice, rssi, scanRecord)
             scanDevices.add(bleDevice)
         } else {
-            if (!BLE.options().isFilterScan) //无需过滤
+            if (!options.filterRepeat){//无需过滤
                 scanCallback.scanAction?.invoke(bleDevice, rssi, scanRecord)
+            }
         }
+    }
+
+    /**
+     * 是否通过名称过滤,且满足过滤条件
+     */
+    private fun filterByName(bleName: String?): Boolean{
+        val filterName = options.filterByName
+        if (TextUtils.isEmpty(filterName)){
+            return true
+        }
+        if (bleName == null){
+            return false
+        }
+        if(bleName.contains(filterName)){
+            return true
+        }
+        return false
     }
 
     //获取已扫描到的设备（重复设备）
     private fun getDevice(address: String): T? {
-        scanDevices.forEach {
-            if (it.address == address) return@forEach
+        for (device in scanDevices) {
+            if (device.address == address) {
+                return device
+            }
         }
         return null
     }

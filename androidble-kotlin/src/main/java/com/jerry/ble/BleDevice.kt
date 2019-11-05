@@ -8,7 +8,7 @@ import kotlinx.android.parcel.Parcelize
 open class BleDevice private constructor(
     var connectState: BleStates = BleStates.DISCONNECT, var address: String,
     var name: String?, var alias: String = "", var autoConnect: Boolean = false,
-    var autoConnectting: Boolean = false
+    var autoConnectting: Boolean = false, var enableNotification: Boolean = false
 ) : Parcelable {
 
     val connected

@@ -7,6 +7,7 @@ import com.jerry.ble.BleDevice
 import com.jerry.ble.Dependency
 import com.jerry.ble.Provider
 import com.jerry.ble.callback.BleWriteCallback
+import java.util.*
 
 
 class WriteRequest<T: BleDevice> private constructor(): BleWriteCallback<T> {
@@ -28,8 +29,8 @@ class WriteRequest<T: BleDevice> private constructor(): BleWriteCallback<T> {
         writeCallback.writeSuccessAction?.invoke(bleDevice, characteristic)
     }
 
-    override fun onWriteFailed(device: BluetoothDevice, states: Int) {
-        val bleDevice = ConnectRequest.get().getBleDevice(device.address) as T
+    override fun onWriteFailed(device: BluetoothDevice?, states: Int) {
+        val bleDevice = ConnectRequest.get().getBleDevice(device?.address) as T
         writeCallback.writeFailedAction?.invoke(bleDevice, states)
     }
 
@@ -53,6 +54,14 @@ class WriteRequest<T: BleDevice> private constructor(): BleWriteCallback<T> {
         }
         val bleService = BLE.instance.getBleService()
         return bleService.wirteCharacteristic(device.address, value)
+    }
+
+    fun writeByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, value: ByteArray, listenerBuilder: (ListenerBuilder.() -> Unit)?=null): Boolean{
+        if (listenerBuilder != null){
+            writeCallback = ListenerBuilder().also (listenerBuilder)
+        }
+        val bleService = BLE.instance.getBleService()
+        return bleService.wirteCharacteristicByUUID(address, serviceUUID, characteristicUUID, value)
     }
 
 }

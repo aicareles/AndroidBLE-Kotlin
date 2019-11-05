@@ -22,6 +22,13 @@
             android:text="发送"/>
 
         <Button
+            android:id="@+id/read"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="读取"/>
+
+        <Button
             android:id="@+id/readRssi"
             android:layout_width="0dp"
             android:layout_weight="1"
@@ -35,13 +42,6 @@
             android:layout_height="wrap_content"
             android:text="请求MTU"/>
 
-        <Button
-            android:id="@+id/sendEntityData"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:text="发送文件"/>
-
     </LinearLayout>
 
     <LinearLayout
@@ -51,12 +51,11 @@
         android:layout_below="@+id/ll_function">
 
         <Button
-            android:id="@+id/cancelEntity"
+            android:id="@+id/sendEntityData"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:text="取消发送文件"/>
+            android:text="发送文件"/>
 
         <Button
             android:id="@+id/startAdvertise"

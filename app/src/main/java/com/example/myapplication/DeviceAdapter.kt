@@ -36,6 +36,7 @@ class DeviceAdapter(var items: List<BleDevice>) : RecyclerView.Adapter<DeviceAda
         device.run {
             holder.itemView.tv_name.text = name ?: "未知设备"
             holder.itemView.tv_address.text = address
+            holder.itemView.btn_notify.text = if (enableNotification) "关闭通知" else "打开通知"
             when {
                 device.connected -> holder.itemView.tv_state.text = "已连接"
                 device.connectting -> holder.itemView.tv_state.text = "正在连接中..."

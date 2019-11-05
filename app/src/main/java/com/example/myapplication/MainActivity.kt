@@ -22,6 +22,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private val TAG = "MainActivity"
     private val UUID_SERVICE = UUID.fromString("0000fee9-0000-1000-8000-00805f9b34fb")
     private val UUID_WRITE_CHA = UUID.fromString("d44bc439-abfd-45a2-b575-925416129600")
+    private val UUID_READ_CHA = UUID.fromString("d44bc439-abfd-45a2-b575-925416129603")
+    private val UUID_NOTIFY_CHA = UUID.fromString("d44bc439-abfd-45a2-b575-925416129601")
     private val REQUEST_ENABLE_BT = 1
     private lateinit var ble: BLE<BleDevice>
     private var listDatas = mutableListOf<BleDevice>()
@@ -33,6 +35,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         requestPermission()
         initView()
         initLinsenter()
+        initBluetoothStates()
     }
 
     private fun initView(){
@@ -49,6 +52,38 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 }
             }
         }
+        adapter.setOnItemNotifyClickListener {
+            val device = adapter.items[it]
+            val enable = !device.enableNotification
+            ble.enableNotifyByUUID(device.address, UUID_SERVICE, UUID_NOTIFY_CHA, enable){
+                onChanged { device, characteristic ->
+                    loge(TAG, "收到数据${characteristic.value.bytesToHexString()}")
+                }
+                onNotifySuccess {
+                    loge(TAG, "打开通知成功")
+                    launch(Dispatchers.Main) {
+                        adapter.notifyDataSetChanged()
+                    }
+                }
+                onNotifyCanceled {
+                    loge(TAG, "通知已关闭")
+                    launch(Dispatchers.Main) {
+                        adapter.notifyDataSetChanged()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun initBluetoothStates() {
+        BLE.instance.setBluetoothCallback(applicationContext){
+            onBluetoothOn {
+                loge(TAG, "蓝牙已打开")
+            }
+            onBluetoothOff {
+                loge(TAG, "蓝牙已关闭")
+            }
+        }
     }
 
     private fun initLinsenter() {
@@ -61,10 +96,23 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 }
             }
         }
+        read.setOnClickListener {
+            handleException {
+                ble.readByUUID(ble.getConnectedDevices()[0].address, UUID_SERVICE, UUID_READ_CHA){
+                    onReadSuccess { device, characteristic ->
+                        loge(TAG, "读取数据成功:${characteristic.value.bytesToHexString()}")
+                    }
+                    onReadFailed { device, states ->
+                        loge(TAG, "读取数据失败")
+                    }
+                }
+            }
+        }
         sendData.setOnClickListener {
             handleException {
                 val data = byteArrayOf(0x00, 0x01, 0x02)
-                ble.write(ble.getConnectedDevices()[0], data){
+                //方式一: 需要在初始化中配置uuid  推荐
+                ble.write(ble.getConnectedDevices()[0], value = data){
                     onWriteSuccess { device, characteristic ->
                         loge(TAG, "写入数据成功")
                     }
@@ -72,6 +120,15 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         loge(TAG, "写入数据失败")
                     }
                 }
+                /*//方式二
+                ble.writeByUUID(ble.getConnectedDevices()[0].address, UUID_SERVICE, UUID_WRITE_CHA, value = data){
+                    onWriteSuccess { device, characteristic ->
+                        loge(TAG, "写入数据成功")
+                    }
+                    onWriteFailed { device, states ->
+                        loge(TAG, "写入数据失败")
+                    }
+                }*/
             }
         }
         requestMtu.setOnClickListener {
@@ -92,6 +149,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
 
         scan.setOnClickListener {
+            if (ble.scanning())return@setOnClickListener
             listDatas.clear()
             listDatas.addAll(ble.getConnectedDevices())
             adapter.notifyDataSetChanged()
@@ -101,16 +159,17 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun scan() {
         BLE.instance.startScan({
-            onStart {
+            /*onStart {
                 loge(TAG,"开始扫描")
             }
             onStop {
                 loge(TAG,"停止扫描")
-            }
+            }*/
             onLeScan { device, _, _ ->
-                for (d in listDatas) {
+                loge(TAG, "扫描到的设备>>>>${device.name}:${device.address}")
+                /*for (d in listDatas) {
                     if (d.address == device.address)return@onLeScan
-                }
+                }*/
                 device.let {
                     listDatas.add(it)
                     adapter.notifyDataSetChanged()
@@ -122,7 +181,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     if (it == -1)ble.openBluetooth(this@MainActivity, REQUEST_ENABLE_BT)
                 }
             }
-        }, 12000L)
+        })
     }
     
     private fun connect(device: BleDevice) {
@@ -145,6 +204,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
+    //使能通知,需在初始化配置服务uuid  推荐
     private fun enableNotify(device: BleDevice){
         ble.enableNotify(device){
             onChanged { device, characteristic ->
@@ -187,6 +247,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             connectFailedRetryCount = 3
             connectTimeout = 10000L
             scanPeriod = 12000L
+            filterByName = ""
+            filterRepeat = true
             uuidService = UUID_SERVICE
             uuidWriteCha = UUID_WRITE_CHA
         }.create(applicationContext).apply {

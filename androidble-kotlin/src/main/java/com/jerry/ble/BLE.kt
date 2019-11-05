@@ -17,6 +17,7 @@ class BLE<T: BleDevice> private constructor(){
     private lateinit var context: Context
     private lateinit var bleService: BleService
     private lateinit var options: Options
+    private lateinit var bluetoothObserver: BluetoothObserver
 
     companion object{
         val instance by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -52,9 +53,16 @@ class BLE<T: BleDevice> private constructor(){
         return result
     }
 
-    private fun destory(){
+    fun setBluetoothCallback(context: Context, listenerBuilder: BluetoothObserver.ListenerBuilder.() -> Unit) {
+        this.bluetoothObserver = BluetoothObserver(context)
+        this.bluetoothObserver.setBluetoothCallback(listenerBuilder)
+        this.bluetoothObserver.registerReceiver()
+    }
+
+    fun destory(){
         if (this::context.isInitialized){
             context.unbindService(serviceConnection)
+            bluetoothObserver.unregisterReceiver()
         }else {
             throw BleException("Please initialize, like this 'BLE.options()...create()' ")
         }
@@ -111,6 +119,9 @@ class BLE<T: BleDevice> private constructor(){
         return ConnectRequest.get().getBleDevice(address) as T
     }
 
+    fun scanning(): Boolean {
+        return ScanRequest.get().isScanning()
+    }
 
     fun startScan(listenerBuilder: ScanRequest<BleDevice>.ListenerBuilder.() -> Unit, scanPeriod: Long=options.scanPeriod){
         ScanRequest.get().startScan(listenerBuilder, scanPeriod)
@@ -125,6 +136,11 @@ class BLE<T: BleDevice> private constructor(){
         ConnectRequest.get().connect(device, listenerBuilder)
     }
 
+    @Synchronized
+    fun connect(address: String, listenerBuilder: (ConnectRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
+        ConnectRequest.get().connect(address, listenerBuilder)
+    }
+
     fun disconnect(device: T, listenerBuilder: (ConnectRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
         ConnectRequest.get().disconnect(device, listenerBuilder)
     }
@@ -133,8 +149,16 @@ class BLE<T: BleDevice> private constructor(){
         NotifyRequest.get().enableNotify(device, listenerBuilder)
     }
 
+    fun enableNotifyByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, enable: Boolean=true, listenerBuilder: (NotifyRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
+        NotifyRequest.get().enableNotifyByUUID(address, serviceUUID, characteristicUUID, enable, listenerBuilder)
+    }
+
     fun read(device: T, listenerBuilder: (ReadRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
         ReadRequest.get().read(device, listenerBuilder)
+    }
+
+    fun readByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID,listenerBuilder: (ReadRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
+        ReadRequest.get().readByUUID(address, serviceUUID, characteristicUUID, listenerBuilder)
     }
 
     fun readRssi(device: T, listenerBuilder: (ReadRequest<BleDevice>.RssiListenerBuilder.() -> Unit)?=null){
@@ -143,6 +167,10 @@ class BLE<T: BleDevice> private constructor(){
 
     fun write(device: T, value: ByteArray, listenerBuilder: (WriteRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
         WriteRequest.get().write(device, value, listenerBuilder)
+    }
+
+    fun writeByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, value: ByteArray, listenerBuilder: (WriteRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null){
+        WriteRequest.get().writeByUUID(address, serviceUUID, characteristicUUID, value, listenerBuilder)
     }
 
     fun setMtu(device: T, mtu: Int, listenerBuilder: (MtuRequest<BleDevice>.ListenerBuilder.() -> Unit)?=null) {
@@ -182,30 +210,26 @@ class BLE<T: BleDevice> private constructor(){
         /**
          * 蓝牙扫描周期时长
          */
-        var scanPeriod = 10 * 1000L
-        /**
-         * 服务绑定失败重试次数
-         */
-        var serviceBindFailedRetryCount = 3
+        var scanPeriod = 12 * 1000L
         /**
          * 蓝牙连接失败重试次数
          */
         var connectFailedRetryCount = 3
         /**
-         * 是否过滤扫描设备
+         * 是否过滤重复设备
          */
-        var isFilterScan = false
+        var filterRepeat = false
+        /**
+         * 根据设备名称过滤指定设备
+         */
+        var filterByName = ""
 
         var uuidServicesExtra = arrayOf<UUID>()
-        var uuidService = UUID.fromString("0000fee9-0000-1000-8000-00805f9b34fb")
-        var uuidWriteCha = UUID.fromString("d44bc439-abfd-45a2-b575-925416129600")
-        var uuidReadCha = UUID.fromString("d44bc439-abfd-45a2-b575-925416129600")
-        var uuidNotify = UUID.fromString("d44bc439-abfd-45a2-b575-925416129601")
-        var uuidNotifyDesc = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
-
-        var uuidOtaService = UUID.fromString("0000fee8-0000-1000-8000-00805f9b34fb")
-        var uuidOtaNotifyCha = UUID.fromString("003784cf-f7e3-55b4-6c4c-9fd140100a16")
-        var uuidOtaWriteCha = UUID.fromString("013784cf-f7e3-55b4-6c4c-9fd140100a16")
+        var uuidService = UUID.fromString("0000fd00-0000-1000-8000-00805f9b34fb")
+        var uuidWriteCha = UUID.fromString("d44bc439-abfd-45a2-b575-925416129601")
+        var uuidReadCha = UUID.fromString("d44bc439-abfd-45a2-b575-925416129602")
+//        var uuidNotify = UUID.fromString("d44bc439-abfd-45a2-b575-925416129603")
+//        var uuidNotifyDesc = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
         fun scanPeriod(scanPeriod: Long) = apply {
             this.scanPeriod = scanPeriod
@@ -231,16 +255,16 @@ class BLE<T: BleDevice> private constructor(){
             this.connectTimeout = connectTimeout
         }
 
-        fun serviceBindFailedRetryCount(serviceBindFailedRetryCount: Int)= apply  {
-            this.serviceBindFailedRetryCount = serviceBindFailedRetryCount
-        }
-
         fun connectFailedRetryCount(connectFailedRetryCount: Int)= apply  {
             this.connectFailedRetryCount = connectFailedRetryCount
         }
 
-        fun filterScan(filterScan: Boolean)= apply  {
-            isFilterScan = filterScan
+        fun filterRepeat(filterRepeat: Boolean)= apply  {
+            this.filterRepeat = filterRepeat
+        }
+
+        fun filterByName(name: String)= apply  {
+            this.filterByName = name
         }
 
         fun uuidServicesExtra(uuid_services_extra: Array<UUID>)= apply  {
@@ -257,26 +281,6 @@ class BLE<T: BleDevice> private constructor(){
 
         fun uuidReadCha(uuid_read_cha: UUID)= apply  {
             this.uuidReadCha = uuid_read_cha
-        }
-
-        fun uuidNotify(uuid_notify: UUID)= apply  {
-            this.uuidNotify = uuid_notify
-        }
-
-        fun uuidNotifyDesc(uuid_notify_desc: UUID)= apply  {
-            this.uuidNotifyDesc = uuid_notify_desc
-        }
-
-        fun uuidOtaService(uuid_ota_service: UUID)= apply  {
-            this.uuidOtaService = uuid_ota_service
-        }
-
-        fun uuidOtaNotifyCha(uuid_ota_notify_cha: UUID)= apply  {
-            this.uuidOtaNotifyCha = uuid_ota_notify_cha
-        }
-
-        fun uuidOtaWriteCha(uuid_ota_write_cha: UUID)= apply  {
-            this.uuidOtaWriteCha = uuid_ota_write_cha
         }
 
         fun create(context: Context): BLE<BleDevice> {
