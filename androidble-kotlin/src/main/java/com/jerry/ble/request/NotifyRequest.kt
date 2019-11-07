@@ -2,10 +2,8 @@ package com.jerry.ble.request
 
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
-import com.jerry.ble.BLE
-import com.jerry.ble.BleDevice
-import com.jerry.ble.Dependency
-import com.jerry.ble.Provider
+import com.jerry.ble.*
+import com.jerry.ble.BleRequestImpl
 import com.jerry.ble.callback.BleNotifyCallback
 import java.util.*
 
@@ -63,15 +61,13 @@ class NotifyRequest<T: BleDevice> private constructor():
         if (listenerBuilder != null){
             notifyCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        bleService.setCharacteristicNotification(device.address, true)
+        BleRequestImpl.get().setCharacteristicNotification(device.address, true)
     }
 
     fun enableNotifyByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, enable: Boolean, listenerBuilder: (ListenerBuilder.() -> Unit)?=null){
         if (listenerBuilder != null){
             notifyCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        bleService.setCharacteristicNotificationByUUID(address, serviceUUID, characteristicUUID, enable)
+        BleRequestImpl.get().setCharacteristicNotificationByUUID(address, serviceUUID, characteristicUUID, enable)
     }
 }

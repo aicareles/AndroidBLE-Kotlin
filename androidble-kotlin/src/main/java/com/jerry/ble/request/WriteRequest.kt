@@ -2,10 +2,8 @@ package com.jerry.ble.request
 
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
-import com.jerry.ble.BLE
-import com.jerry.ble.BleDevice
-import com.jerry.ble.Dependency
-import com.jerry.ble.Provider
+import com.jerry.ble.*
+import com.jerry.ble.BleRequestImpl
 import com.jerry.ble.callback.BleWriteCallback
 import java.util.*
 
@@ -52,16 +50,14 @@ class WriteRequest<T: BleDevice> private constructor(): BleWriteCallback<T> {
         if (listenerBuilder != null){
             writeCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        return bleService.wirteCharacteristic(device.address, value)
+        return BleRequestImpl.get().wirteCharacteristic(device.address, value)
     }
 
     fun writeByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, value: ByteArray, listenerBuilder: (ListenerBuilder.() -> Unit)?=null): Boolean{
         if (listenerBuilder != null){
             writeCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        return bleService.wirteCharacteristicByUUID(address, serviceUUID, characteristicUUID, value)
+        return BleRequestImpl.get().wirteCharacteristicByUUID(address, serviceUUID, characteristicUUID, value)
     }
 
 }

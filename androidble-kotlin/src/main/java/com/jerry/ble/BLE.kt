@@ -15,7 +15,6 @@ import java.util.*
 class BLE<T: BleDevice> private constructor(){
     val TAG = "BLE"
     private lateinit var context: Context
-    private lateinit var bleService: BleService
     private lateinit var options: Options
     private lateinit var bluetoothObserver: BluetoothObserver
 
@@ -34,23 +33,11 @@ class BLE<T: BleDevice> private constructor(){
         }
     }
 
-    private fun init(context: Context, options: Options) : Boolean{
+    private fun init(context: Context, options: Options){
         this.context = context
         this.options = options
         L.init(options)
-        return startService(context)
-    }
-
-    private fun startService(context: Context): Boolean{
-        val serviceIntent = Intent(context, BleService::class.java)
-        val result: Boolean
-        result = context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
-        if (result) L.i(TAG, "service bind succseed!!!") else{
-            if (options.throwBleException){
-                throw BleException("Bluetooth service binding failed, Please check whether the service is registered in the manifest file!")
-            }
-        }
-        return result
+        BleRequestImpl.get().init(options, context)
     }
 
     fun setBluetoothCallback(context: Context, listenerBuilder: BluetoothObserver.ListenerBuilder.() -> Unit) {
@@ -61,15 +48,11 @@ class BLE<T: BleDevice> private constructor(){
 
     fun destory(){
         if (this::context.isInitialized){
-            context.unbindService(serviceConnection)
             bluetoothObserver.unregisterReceiver()
+            BleRequestImpl.get().close()
         }else {
             throw BleException("Please initialize, like this 'BLE.options()...create()' ")
         }
-    }
-
-    fun getBleService(): BleService{
-        return bleService
     }
 
     fun isSupportBle(): Boolean {
@@ -85,25 +68,6 @@ class BLE<T: BleDevice> private constructor(){
         if (!isBleEnable()){
             val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             activity.startActivityForResult(intent, requestCode)
-        }
-    }
-
-    private val serviceConnection = object : ServiceConnection {
-
-        override fun onServiceConnected(
-            componentName: ComponentName,
-            service: IBinder
-        ) {
-            bleService = (service as BleService.LocalBinder).service
-            bleService.initialize(options)
-            L.e(TAG, "Service connection successful")
-            if (!bleService.initBLE()) {
-                L.e(TAG, "Unable to initBLE Bluetooth")
-            }
-        }
-
-        override fun onServiceDisconnected(componentName: ComponentName) {
-//            bleService = null
         }
     }
 

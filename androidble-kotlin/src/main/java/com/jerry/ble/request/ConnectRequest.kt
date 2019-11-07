@@ -105,8 +105,7 @@ class ConnectRequest<T: BleDevice> private constructor():
         if (listenerBuilder != null){
             connectCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        return bleService.connect(device.address)
+        return BleRequestImpl.get().connect(device.address)
     }
 
     fun connect(address: String, listenerBuilder: (ListenerBuilder.() -> Unit)?=null): Boolean{
@@ -118,8 +117,7 @@ class ConnectRequest<T: BleDevice> private constructor():
         if (listenerBuilder != null){
             connectCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        bleService.disconnect(device.address)
+        BleRequestImpl.get().disconnect(device.address)
     }
 
     fun getConnectedDevices(): List<T> {

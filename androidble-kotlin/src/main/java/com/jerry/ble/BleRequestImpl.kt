@@ -14,9 +14,10 @@ import com.jerry.ble.callback.*
 import com.jerry.ble.request.*
 import java.util.*
 
-class BleService : Service() {
-    private val TAG = BleService::class.java.simpleName
+internal class BleRequestImpl private constructor(){
+    private val TAG = BleRequestImpl::class.java.simpleName
     private lateinit var options: BLE.Options
+    private lateinit var context: Context
     private var handler: Handler = Handler()
     private var bluetoothManager: BluetoothManager? = null
     private var bluetoothAdapter: BluetoothAdapter? = null
@@ -25,7 +26,6 @@ class BleService : Service() {
     private var notifyIndex = 0//Notification feature callback list
     private val writeCharacteristicMap = mutableMapOf<String, BluetoothGattCharacteristic>()
     private val readCharacteristicMap = mutableMapOf<String, BluetoothGattCharacteristic>()
-    private val timeoutTasks = mutableMapOf<String, Runnable>()
 
     /**
      * Multiple device connections must put the gatt object in the collection
@@ -42,6 +42,10 @@ class BleService : Service() {
     private lateinit var bleNotifyCallback: BleNotifyCallback<BleDevice>
     private lateinit var bleMtuCallback: BleMtuCallback<BleDevice>
 
+    companion object : Dependency<BleRequestImpl> by Provider({
+        BleRequestImpl()
+    })
+
     /**
      * 在各种状态回调中发现连接更改或服务
      */
@@ -52,11 +56,6 @@ class BleService : Service() {
         ) {
             val device = gatt.device
             //remove timeout callback
-            /*val timeoutRunnable = timeoutTasks[device.address]
-            if (timeoutRunnable != null) {
-                timeoutTasks.remove(device.address)
-                handler.removeCallbacks(timeoutRunnable)
-            }*/
             handler.removeCallbacksAndMessages(device.address)
             //There is a problem here Every time a new object is generated that causes the same device to be disconnected and the connection produces two objects
             if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -207,32 +206,15 @@ class BleService : Service() {
                 BluetoothProfile.GATT
             )
 
-    private val mBinder = LocalBinder()
-
-
-    inner class LocalBinder : Binder() {
-        val service: BleService
-            get() = this@BleService
-    }
-
-    override fun onBind(intent: Intent): IBinder? {
-        L.e(TAG, "onBind>>>>")
-        return mBinder
-    }
-
-    override fun onUnbind(intent: Intent): Boolean {
-        close()
-        L.e(TAG, "onUnbind>>>>")
-        return super.onUnbind(intent)
-    }
-
-    fun initialize(options: BLE.Options) {
+    fun init(options: BLE.Options, context: Context) {
         this.bleConnectCallback = ConnectRequest.get()
         this.bleWriteCallback = WriteRequest.get()
         this.bleReadCallback = ReadRequest.get()
         this.bleNotifyCallback = NotifyRequest.get()
         this.bleMtuCallback = MtuRequest.get()
         this.options = options
+        this.context = context
+        initBLE()
     }
 
     /**
@@ -243,9 +225,9 @@ class BleService : Service() {
      * android system 4.3 above, the phone supports Bluetooth 4.0
      * @return
      */
-    fun initBLE(): Boolean {
+    private fun initBLE(): Boolean {
         if (bluetoothManager == null) {
-            bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+            bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
             if (bluetoothManager == null) {
                 L.e(TAG, "Unable to initBLE BluetoothManager.")
                 return false
@@ -253,13 +235,6 @@ class BleService : Service() {
         }
         bluetoothAdapter = bluetoothManager?.adapter
         return bluetoothAdapter != null
-    }
-
-    private fun checkTimeOutTask(device: BluetoothDevice): Runnable {
-        return Runnable {
-            bleConnectCallback.onConnectTimeOut(device)
-            close(device.address)
-        }
     }
 
     /**
@@ -290,16 +265,13 @@ class BleService : Service() {
             return false
         }
         //10s after the timeout prompt
-        /*val timeOutRunnable = checkTimeOutTask(device)
-        timeoutTasks[device.address] = timeOutRunnable
-        handler.postDelayed(timeOutRunnable, options.connectTimeout)*/
         HandlerCompat.postDelayed(handler, {
             bleConnectCallback.onConnectTimeOut(device)
             close(device.address)
         }, device.address, options.connectTimeout)
         bleConnectCallback.onConnectionChanged(device, BleStates.CONNECTING)
         // We want to directly connect to the device, so we are setting the autoConnect parameter to false
-        val bluetoothGatt = device.connectGatt(this, false, mGattCallback)
+        val bluetoothGatt = device.connectGatt(context, false, mGattCallback)
         if (bluetoothGatt != null) {
             bluetoothGattMap[address] = bluetoothGatt
             L.d(TAG, "Trying to create a new connection.")
@@ -408,6 +380,7 @@ class BleService : Service() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        bleWriteCallback.onWriteFailed(bluetoothGatt.device, -1)
         return false
     }
 
@@ -434,6 +407,7 @@ class BleService : Service() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        bleReadCallback.onReadFailed(bluetoothGatt.device, -1)
         return false
     }
 

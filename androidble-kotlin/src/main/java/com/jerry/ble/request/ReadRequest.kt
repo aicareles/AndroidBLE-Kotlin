@@ -2,10 +2,8 @@ package com.jerry.ble.request
 
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
-import com.jerry.ble.BLE
-import com.jerry.ble.BleDevice
-import com.jerry.ble.Dependency
-import com.jerry.ble.Provider
+import com.jerry.ble.*
+import com.jerry.ble.BleRequestImpl
 import com.jerry.ble.callback.BleReadCallback
 import java.util.*
 
@@ -77,24 +75,21 @@ class ReadRequest<T: BleDevice> private constructor(): BleReadCallback<T> {
         if (listenerBuilder != null){
             readCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        return bleService.readCharacteristic(device.address)
+        return BleRequestImpl.get().readCharacteristic(device.address)
     }
 
     fun readByUUID(address: String, serviceUUID: UUID, characteristicUUID: UUID, listenerBuilder: (ListenerBuilder.() -> Unit)?=null): Boolean{
         if (listenerBuilder != null){
             readCallback = ListenerBuilder().also (listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        return bleService.readCharacteristicByUUID(address, serviceUUID, characteristicUUID)
+        return BleRequestImpl.get().readCharacteristicByUUID(address, serviceUUID, characteristicUUID)
     }
 
     fun readRssi(device: T, listenerBuilder: (RssiListenerBuilder.() -> Unit)?=null): Boolean{
         if (listenerBuilder != null){
             readRssiCallback = RssiListenerBuilder().also(listenerBuilder)
         }
-        val bleService = BLE.instance.getBleService()
-        return bleService.readRssi(device.address)
+        return BleRequestImpl.get().readRssi(device.address)
     }
 
 
